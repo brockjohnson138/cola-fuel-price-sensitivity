@@ -20,3 +20,5 @@ outputs/*.joblib
 !outputs/fuel_shock_grid.csv
 !outputs/forecast_validation_metrics.csv
 !outputs/scenario_summary.json
+!outputs/extended_cola_thresholds.csv
+!outputs/extended_fuel_shock_grid.csv

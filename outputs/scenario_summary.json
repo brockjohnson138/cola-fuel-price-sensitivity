@@ -13,6 +13,12 @@
     "cola_raw_pct": 3.4460379004030006,
     "cola_rounded_pct": 3.4
   },
+  "raw_rounding_diagnostic": {
+    "raw_cola_pct": 3.4460379004030006,
+    "rounded_cola_pct": 3.4,
+    "next_tenth_raw_threshold_pct": 3.45,
+    "warning": "Round the unrounded COLA once to the nearest tenth; do not round to two decimals first."
+  },
   "next_tenth_target_cola_pct": 3.5,
   "required_september_cpi_w_for_next_tenth": 329.045893,
   "additional_september_index_gap": 0.037711026238469,
@@ -24,9 +30,50 @@
     "gasoline": 0.03971,
     "other_motor_fuels": 0.00107
   },
+  "pass_through_model": {
+    "method": "two-stage ridge with monthly seasonality and distributed lags",
+    "stage1_observations": 107,
+    "stage2_observations": 109,
+    "core_stage2_observations": 109,
+    "stage1_in_sample_r2": 0.41730308694567686,
+    "stage2_in_sample_r2": 0.6101231255881838,
+    "core_stage2_in_sample_r2": 0.536440485873293,
+    "sample_start": "2017-01-01",
+    "sample_end": "2026-08-01",
+    "truck_ppi_log_change_per_1pct_diesel": 0.0013527881510648938,
+    "nonfuel_all_items_log_change_per_1pct_diesel": 2.5141405899087137e-05,
+    "truck_ppi_percent_response_per_1pct_diesel": 0.13527881510648937,
+    "indirect_all_items_percent_response_per_1pct_diesel": 0.0025141405899087137,
+    "core_percent_response_per_1pct_diesel": 0.0013625205216664157
+  },
+  "extended_baseline_projection": {
+    "gasoline_shock_pct": 0.0,
+    "diesel_shock_pct": 0.0,
+    "direct_index_increment": 0.0,
+    "indirect_index_increment": 0.0,
+    "indirect_log_change": 0.0,
+    "september_cpi_w_all_items": 329.0081819737615,
+    "q3_cpi_w_average": 328.1977273245872,
+    "cola_raw_pct": 3.4460379004030006,
+    "cola_rounded_pct": 3.4
+  },
+  "extended_next_tenth_projection": {
+    "diesel_only_shock_pct": 3.222447982999937,
+    "diesel_price_if_only_diesel": 5.725749189617006,
+    "gasoline_shock_pct": 0.0,
+    "diesel_shock_pct": 3.222447982999937,
+    "direct_index_increment": 0.011344265750592516,
+    "indirect_index_increment": 0.02636676048783218,
+    "indirect_log_change": 8.013692507042431e-05,
+    "september_cpi_w_all_items": 329.045893,
+    "q3_cpi_w_average": 328.2102976666667,
+    "cola_raw_pct": 3.4500000000000157,
+    "cola_rounded_pct": 3.5
+  },
   "interpretation": [
     "Fuel shocks are ceteris-paribus counterfactuals using BLS CPI-W relative-importance weights.",
-    "The calculation does not claim that fuel prices alone determine the COLA or that the shock is causal.",
+    "The extended channel estimates diesel-to-trucking-to-nonfuel pass-through from historical monthly relationships; it is not a structural causal estimate.",
+    "The calculation does not claim that fuel prices alone determine the COLA.",
     "The September CPI-W release will replace the forecast and make the official COLA arithmetic exact."
   ]
 }

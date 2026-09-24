@@ -5,6 +5,8 @@
   "july_2026_cpi_w": 327.104,
   "august_2026_cpi_w": 328.481,
   "baseline_september_cpi_w_forecast": 329.0081819737615,
+  "september_cpi_w_used": 329.0081819737615,
+  "september_cpi_w_source": "historical median September-over-August forecast",
   "baseline_projection": {
     "gasoline_shock_pct": 0.0,
     "other_motor_fuel_shock_pct": 0.0,

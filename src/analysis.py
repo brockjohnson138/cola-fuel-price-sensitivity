@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -52,6 +54,19 @@ def september_baseline(frame: pd.DataFrame, series_name: str) -> float:
     # Use completed pre-2026 years so the current incomplete quarter is not recycled.
     changes = changes[changes.index < 2026]
     return float(pivot.loc[2026, 8] * (1.0 + changes.median()))
+
+
+def _snapshot_date() -> str:
+    """Return the acquisition date recorded with the committed snapshot."""
+    path = ROOT / "data" / "raw" / "bls_series.json"
+    if path.exists():
+        try:
+            retrieved = json.loads(path.read_text()).get("retrieved_at_utc")
+            if retrieved:
+                return datetime.fromisoformat(retrieved.replace("Z", "+00:00")).date().isoformat()
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            pass
+    return datetime.now(timezone.utc).date().isoformat()
 
 
 def fuel_counterfactual(
@@ -126,7 +141,11 @@ def analyze(frame: pd.DataFrame) -> tuple[dict, pd.DataFrame, pd.DataFrame, pd.D
     current = current.set_index(current["date"].dt.month)
     july = float(current.loc[7, "cpi_w_all_items"])
     august = float(current.loc[8, "cpi_w_all_items"])
-    baseline_sep = september_baseline(frame, "cpi_w_all_items")
+    observed_september = None
+    if 9 in current.index and pd.notna(current.loc[9, "cpi_w_all_items"]):
+        observed_september = float(current.loc[9, "cpi_w_all_items"])
+    baseline_sep = observed_september if observed_september is not None else september_baseline(frame, "cpi_w_all_items")
+    september_source = "observed BLS CPI-W" if observed_september is not None else "historical median September-over-August forecast"
     baseline = fuel_counterfactual(q3_2025, july, august, baseline_sep)
     pass_through = fit_pass_through(frame)
     extended_baseline = extended_counterfactual(
@@ -237,12 +256,18 @@ def analyze(frame: pd.DataFrame) -> tuple[dict, pd.DataFrame, pd.DataFrame, pd.D
         base_q3=q3_2025,
     )
     summary = {
-        "as_of": "2026-09-24",
-        "status": "September 2026 CPI-W was not yet available; projected and counterfactual results are scenario analysis.",
+        "as_of": _snapshot_date(),
+        "status": (
+            "September 2026 CPI-W is present; the COLA arithmetic uses the observed September index."
+            if observed_september is not None
+            else "September 2026 CPI-W was not yet available; projected and counterfactual results are scenario analysis."
+        ),
         "q3_2025_base_cpi_w": q3_2025,
         "july_2026_cpi_w": july,
         "august_2026_cpi_w": august,
         "baseline_september_cpi_w_forecast": baseline_sep,
+        "september_cpi_w_used": baseline_sep,
+        "september_cpi_w_source": september_source,
         "baseline_projection": baseline,
         "raw_rounding_diagnostic": {
             "raw_cola_pct": baseline["cola_raw_pct"],
@@ -269,7 +294,11 @@ def analyze(frame: pd.DataFrame) -> tuple[dict, pd.DataFrame, pd.DataFrame, pd.D
             "Fuel shocks are ceteris-paribus counterfactuals using BLS CPI-W relative-importance weights.",
             "The extended channel estimates diesel-to-trucking-to-nonfuel pass-through from historical monthly relationships; it is not a structural causal estimate.",
             "The calculation does not claim that fuel prices alone determine the COLA.",
-            "The September CPI-W release will replace the forecast and make the official COLA arithmetic exact.",
+            (
+                "The observed September CPI-W is now used in the COLA arithmetic."
+                if observed_september is not None
+                else "The September CPI-W release will replace the forecast and make the official COLA arithmetic exact."
+            ),
         ],
     }
     return summary, threshold_df, grid_df, extended_threshold_df, extended_grid_df

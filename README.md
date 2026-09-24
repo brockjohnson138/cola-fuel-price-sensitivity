@@ -1,50 +1,91 @@
-# COLA Fuel-Price Sensitivity
+# Social Security COLA Fuel-Price Sensitivity
 
-This project estimates how gasoline and diesel-related price movements could affect the Social Security Administration's next Cost-of-Living Adjustment (COLA). It is designed for the period before the September 2026 CPI-W release and can be rerun as soon as BLS publishes that month.
+[![CI](https://github.com/brockjohnson138/cola-fuel-price-sensitivity/actions/workflows/ci.yml/badge.svg)](https://github.com/brockjohnson138/cola-fuel-price-sensitivity/actions/workflows/ci.yml)
 
-The analysis follows SSA's official rule: compare the average CPI-W for July, August, and September with the comparison third quarter, then round the percentage increase to the nearest tenth of one percent. For the 2027 COLA, the comparison quarter is Q3 2025.
+This project asks a practical planning question: **how large would a gasoline or diesel-related price shock need to be to move the next Social Security COLA threshold?** It uses official BLS CPI-W and PPI series, applies SSA's published third-quarter arithmetic, and separates direct fuel-weight counterfactuals from an exploratory diesel-to-freight-to-consumer pass-through channel.
 
-The pipeline combines:
+## Executive summary
 
-- official BLS CPI-W all-items, core, motor-fuel, gasoline, other-motor-fuel, gasoline-price, diesel-price, and truck-transportation PPI series;
-- a transparent September baseline forecast using the historical median September-over-August change;
-- a Ridge model benchmarked against that seasonal baseline on historical September observations;
-- a fuel-weight counterfactual model that estimates the gasoline or other-motor-fuel shock required to cross each COLA threshold; and
-- a two-stage, lagged Ridge pass-through model that estimates diesel -> truck transportation -> nonfuel consumer-price effects; and
-- direct and extended 3,721-cell gasoline/diesel shock grids for sensitivity analysis.
+The repository contains a reproducible **pre-release snapshot dated September 24, 2026**. September 2026 CPI-W was not yet available when this snapshot was created, so the results below are provisional scenarios rather than an official COLA estimate.
 
-The direct model holds other prices fixed. The extended model estimates a historical pass-through channel from diesel prices to truck-transportation PPI and then to the all-items CPI-W change remaining after the direct motor-fuel contribution is removed. It is a transparent sensitivity model, not a structural causal estimate; freight contracts, competition, inventory, fuel efficiency, and timing can all change the actual pass-through. BLS defines “other motor fuels” as including automotive diesel and alternative motor fuels, so the direct diesel result is a proxy for that CPI-W component rather than a diesel-only CPI index. September 2026 is unavailable in the current snapshot, so current outputs are provisional and should be refreshed after the October BLS release.
+| Snapshot result | Estimate |
+| --- | ---: |
+| Baseline raw COLA before final September CPI-W | **3.446%** |
+| Baseline COLA after SSA-style one-time rounding | **3.4%** |
+| Raw threshold for the next tenth (3.5%) | **3.450%** |
+| Diesel-only shock in the extended pass-through scenario | **3.22%** |
+| Approximate diesel price in that scenario | **$5.73/gal** |
 
-## Run
+The diesel result is a sensitivity estimate, not a prediction. It combines a direct CPI-W fuel-weight effect with a historical, lagged Ridge pass-through model from diesel prices to truck-transportation PPI and then to nonfuel consumer prices. Actual freight contracts, competition, timing, fuel efficiency, and other prices can produce a different result.
+
+![Provisional COLA threshold comparison](docs/figures/cola_thresholds.png)
+
+![Direct and indirect fuel-shock surface](docs/figures/fuel_shock_surface.png)
+
+![September forecast validation](docs/figures/forecast_validation.png)
+
+## Why this project is useful
+
+The analysis demonstrates how to turn a public-policy formula into a decision-support tool:
+
+- implement SSA's third-quarter COLA calculation without double rounding;
+- acquire and document official economic series;
+- forecast a missing September observation transparently;
+- compare a simple seasonal baseline with a Ridge benchmark;
+- translate fuel-basket weights into counterfactual thresholds; and
+- show where an exploratory pass-through model adds assumptions rather than certainty.
+
+## Method
+
+1. Pull or reuse a dated BLS snapshot for CPI-W all-items, core, motor fuels, gasoline, other motor fuels, gasoline and diesel prices, and truck-transportation PPI.
+2. Estimate September CPI-W with the historical median September-over-August change when the official September value is unavailable.
+3. Calculate the Q3 2026 average and compare it with the Q3 2025 base used for the 2027 COLA.
+4. Apply the December 2025 BLS relative-importance shares for gasoline (3.971%) and other motor fuels (0.107%) to direct counterfactual scenarios.
+5. Estimate an exploratory two-stage lagged Ridge channel from diesel prices to trucking costs to nonfuel consumer prices.
+6. Export threshold tables, shock grids, validation metrics, and a manifest describing the source series and data limitations.
+
+The simple forecast is intentionally retained as the primary baseline. In the saved historical comparison, the seasonal median has lower mean absolute error than the Ridge benchmark (0.277 versus 1.092 across five held-out September observations). The small validation sample is reported so the result is not presented as a broad model-performance claim.
+
+## Reproduce the analysis
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 python run_pipeline.py
-pytest -q
+python scripts/make_figures.py
+python -m pytest -q
 ```
 
-Use `python run_pipeline.py --refresh` to request the latest BLS API snapshot. The default run uses the saved snapshot so the results remain reproducible.
+The default run uses the committed BLS snapshot for reproducibility. Use `python run_pipeline.py --refresh` to request current BLS data when the September 2026 release is available. The refresh command should be rerun after checking the release date and reviewing the resulting manifest.
 
-## Outputs
+## Repository map
 
-- `outputs/scenario_summary.json` — current baseline, next-tenth COLA target, and fuel-only threshold estimates;
-- `outputs/cola_thresholds.csv` — required September CPI-W and gasoline/diesel proxy shocks for each rounded COLA target;
-- `outputs/fuel_shock_grid.csv` — combined gasoline and other-motor-fuel counterfactuals;
-- `outputs/extended_cola_thresholds.csv` — thresholds after adding estimated diesel-to-freight-to-consumer pass-through;
-- `outputs/extended_fuel_shock_grid.csv` — combined direct-plus-indirect counterfactuals;
-- `outputs/forecast_validation_metrics.csv` — historical comparison of the seasonal baseline and Ridge model; and
-- `data/processed/data_manifest.json` — series IDs, last observations, and data limitations.
+```text
+src/                  acquisition, preparation, forecasting, analysis, pass-through model
+data/                 dated raw snapshot, processed series, and provenance manifests
+outputs/              threshold tables, scenario grids, diagnostics, and summary JSON
+docs/EVIDENCE.md      definitions, sources, and limitations
+docs/PORTFOLIO.md     concise portfolio framing
+docs/figures/         generated figures used in this README
+scripts/              reproducible figure generation
+tests/                arithmetic and model-behavior tests
+```
 
-See [`docs/EVIDENCE.md`](docs/EVIDENCE.md) for definitions, source series, and limitations and [`docs/PORTFOLIO.md`](docs/PORTFOLIO.md) for the portfolio description.
+Important outputs:
 
-## Sources
+- [`scenario_summary.json`](outputs/scenario_summary.json) — headline estimates and model diagnostics;
+- [`extended_cola_thresholds.csv`](outputs/extended_cola_thresholds.csv) — diesel thresholds after the exploratory pass-through channel;
+- [`extended_fuel_shock_grid.csv`](outputs/extended_fuel_shock_grid.csv) — combined gasoline/diesel scenarios;
+- [`forecast_validation_metrics.csv`](outputs/forecast_validation_metrics.csv) — baseline versus Ridge comparison; and
+- [`data_manifest.json`](data/processed/data_manifest.json) — series IDs, last observations, and availability notes.
 
-- [SSA COLA methodology](https://www.ssa.gov/cola/)
-- [SSA latest COLA calculation example](https://www.ssa.gov/OACT/COLA/latestCOLA.html)
-- [BLS CPI-W series documentation](https://www.bls.gov/cpi/factsheets/cpi-series-ids.htm)
-- [BLS motor-fuel methodology](https://www.bls.gov/cpi/factsheets/motor-fuel.htm)
-- [BLS PPI databases and industry series](https://www.bls.gov/ppi/databases/)
-- [Truck transportation PPI mirror](https://fred.stlouisfed.org/series/PCU484484)
-- [BLS CPI release schedule](https://www.bls.gov/schedule/2026/)
+## Data, evidence, and limitations
+
+The project uses definitions and source links from the [Social Security Administration](https://www.ssa.gov/cola/), [BLS CPI documentation](https://www.bls.gov/cpi/factsheets/cpi-series-ids.htm), [BLS motor-fuel methodology](https://www.bls.gov/cpi/factsheets/motor-fuel.htm), and [BLS PPI databases](https://www.bls.gov/ppi/databases/). See [`docs/EVIDENCE.md`](docs/EVIDENCE.md) for the full evidence register.
+
+This project does not claim that fuel prices alone determine the COLA. It does not estimate a structural causal model. The direct diesel calculation is a proxy because BLS's “other motor fuels” component includes automotive diesel and alternative motor fuels. The pass-through sample is relatively short, and its current diagnostics are in-sample; expanding-window validation and uncertainty intervals are appropriate next improvements.
+
+## Portfolio framing
+
+See [`docs/PORTFOLIO.md`](docs/PORTFOLIO.md) for a concise description suitable for a resume, LinkedIn, or project index.

@@ -1,0 +1,32 @@
+{
+  "as_of": "2026-09-24",
+  "status": "September 2026 CPI-W was not yet available; projected and counterfactual results are scenario analysis.",
+  "q3_2025_base_cpi_w": 317.26466666666664,
+  "july_2026_cpi_w": 327.104,
+  "august_2026_cpi_w": 328.481,
+  "baseline_september_cpi_w_forecast": 329.0081819737615,
+  "baseline_projection": {
+    "gasoline_shock_pct": 0.0,
+    "other_motor_fuel_shock_pct": 0.0,
+    "september_cpi_w_all_items": 329.0081819737615,
+    "q3_cpi_w_average": 328.1977273245872,
+    "cola_raw_pct": 3.4460379004030006,
+    "cola_rounded_pct": 3.4
+  },
+  "next_tenth_target_cola_pct": 3.5,
+  "required_september_cpi_w_for_next_tenth": 329.045893,
+  "additional_september_index_gap": 0.037711026238469,
+  "gasoline_only_shock_pct": 0.2886434891408011,
+  "approx_gasoline_regular_price_per_gallon": 4.212123026543914,
+  "other_motor_fuel_only_shock_pct": 10.712180330636647,
+  "approx_diesel_price_per_gallon": 6.141204642940415,
+  "weights": {
+    "gasoline": 0.03971,
+    "other_motor_fuels": 0.00107
+  },
+  "interpretation": [
+    "Fuel shocks are ceteris-paribus counterfactuals using BLS CPI-W relative-importance weights.",
+    "The calculation does not claim that fuel prices alone determine the COLA or that the shock is causal.",
+    "The September CPI-W release will replace the forecast and make the official COLA arithmetic exact."
+  ]
+}

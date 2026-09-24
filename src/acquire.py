@@ -1,4 +1,4 @@
-"""Acquire official BLS CPI-W and average fuel-price series."""
+"""Acquire official BLS CPI-W, fuel-price, and freight-price series."""
 
 from __future__ import annotations
 
@@ -16,6 +16,8 @@ BLS_API = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
 
 SERIES = {
     "cpi_w_all_items": "CWUR0000SA0",
+    # Broad consumer-price measure used to estimate downstream pass-through.
+    "cpi_w_core": "CWUR0000SA0L1E",
     "cpi_w_motor_fuel": "CWUR0000SETB",
     "cpi_w_gasoline": "CWUR0000SETB01",
     # BLS defines this component as other motor fuels; it includes automotive diesel.
@@ -23,6 +25,8 @@ SERIES = {
     "avg_gasoline_regular": "APU000074714",
     "avg_gasoline_all_types": "APU00007471A",
     "avg_diesel": "APU000074717",
+    # BLS PPI industry series: Truck transportation (NAICS 484).
+    "ppi_truck_transportation": "PCU484---484---",
 }
 
 
@@ -32,22 +36,25 @@ def fetch_series(start_year: int = 2017, end_year: int = 2026) -> dict:
     The public API limits an unregistered request to ten years, so the
     project uses a ten-year window that includes the current 2026 snapshot.
     """
-    series_results = []
-    for series_id in SERIES.values():
-        response = requests.get(
-            f"{BLS_API}{series_id}",
-            params={"startyear": str(start_year), "endyear": str(end_year)},
-            timeout=60,
-        )
-        response.raise_for_status()
-        body = response.json()
-        if body.get("status") != "REQUEST_SUCCEEDED":
-            raise RuntimeError(f"BLS API failure for {series_id}: {body.get('message')}")
-        series_results.extend(body["Results"]["series"])
+    verify_ssl = os.getenv("BLS_VERIFY_SSL", "1").lower() not in {"0", "false", "no"}
+    response = requests.post(
+        BLS_API,
+        json={
+            "seriesid": list(SERIES.values()),
+            "startyear": str(start_year),
+            "endyear": str(end_year),
+        },
+        timeout=60,
+        verify=verify_ssl,
+    )
+    response.raise_for_status()
+    body = response.json()
+    if body.get("status") != "REQUEST_SUCCEEDED":
+        raise RuntimeError(f"BLS API failure: {body.get('message')}")
     return {
         "status": "REQUEST_SUCCEEDED",
         "message": [],
-        "Results": {"series": series_results},
+        "Results": body["Results"],
         "retrieved_at_utc": datetime.now(timezone.utc).isoformat(),
         "series_catalog": SERIES,
     }

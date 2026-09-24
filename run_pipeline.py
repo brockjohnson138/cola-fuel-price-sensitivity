@@ -1,4 +1,4 @@
-"""Run acquisition, preparation, validation, COLA arithmetic, and fuel scenarios."""
+"""Run acquisition, preparation, validation, COLA arithmetic, and pass-through scenarios."""
 
 from __future__ import annotations
 
@@ -22,13 +22,15 @@ def main(refresh: bool = False) -> dict:
     acquire(refresh=refresh)
     paths = build_tables()
     frame = pd.read_csv(paths["monthly"], parse_dates=["date"])
-    summary, thresholds, grid = analyze(frame)
+    summary, thresholds, grid, extended_thresholds, extended_grid = analyze(frame)
     metrics = validate_baseline(frame)
     out = ROOT / "outputs"
     out.mkdir(exist_ok=True)
     (out / "scenario_summary.json").write_text(json.dumps(summary, indent=2))
     thresholds.to_csv(out / "cola_thresholds.csv", index=False)
     grid.to_csv(out / "fuel_shock_grid.csv", index=False)
+    extended_thresholds.to_csv(out / "extended_cola_thresholds.csv", index=False)
+    extended_grid.to_csv(out / "extended_fuel_shock_grid.csv", index=False)
     metrics.to_csv(out / "forecast_validation_metrics.csv", index=False)
     print(json.dumps({"summary": summary, "validation_metrics": metrics.to_dict("records")}, indent=2))
     return summary

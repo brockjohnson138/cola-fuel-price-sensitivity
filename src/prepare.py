@@ -57,9 +57,11 @@ def build_tables() -> dict[str, Path]:
         q3.groupby("year", as_index=False)
         .agg(
             q3_cpi_w_all_items=("cpi_w_all_items", "mean"),
+            q3_cpi_w_core=("cpi_w_core", "mean"),
             q3_motor_fuel=("cpi_w_motor_fuel", "mean"),
             q3_gasoline=("cpi_w_gasoline", "mean"),
             q3_other_motor_fuels=("cpi_w_other_motor_fuels", "mean"),
+            q3_truck_transportation_ppi=("ppi_truck_transportation", "mean"),
             observed_months=("cpi_w_all_items", "count"),
         )
     )
@@ -67,7 +69,7 @@ def build_tables() -> dict[str, Path]:
     quarterly.to_csv(quarterly_path, index=False)
 
     manifest = {
-        "source": "BLS Public Data API v2",
+        "source": "BLS Public Data API v2; truck PPI snapshot may use the FRED BLS mirror when the API quota is unavailable",
         "series": SERIES,
         "monthly_rows": int(len(frame)),
         "last_observation_by_series": {
@@ -76,6 +78,8 @@ def build_tables() -> dict[str, Path]:
         },
         "notes": [
             "CPI-W all items and fuel component indexes are not seasonally adjusted.",
+            "CPI-W core is all items less food and energy and is used only as a broad downstream price proxy.",
+            "Truck transportation PPI is a freight-price proxy, not a direct measure of diesel costs.",
             "Other motor fuels includes automotive diesel and alternative motor fuels.",
             "September 2026 was unavailable at the time of the snapshot and is forecast/scenario-driven.",
         ],

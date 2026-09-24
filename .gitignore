@@ -1,0 +1,22 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# Keep generated data snapshots and outputs reproducible but lightweight.
+data/raw/*.json
+data/processed/*.csv
+data/processed/*.json
+outputs/*.csv
+outputs/*.json
+outputs/*.joblib
+
+# Public, reproducible snapshot and generated portfolio outputs.
+!data/raw/bls_series.json
+!data/processed/monthly_series.csv
+!data/processed/quarterly_series.csv
+!data/processed/data_manifest.json
+!outputs/cola_thresholds.csv
+!outputs/fuel_shock_grid.csv
+!outputs/forecast_validation_metrics.csv
+!outputs/scenario_summary.json

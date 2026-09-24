@@ -4,16 +4,20 @@
     "ssa_latest_cola_example": "https://www.ssa.gov/OACT/COLA/latestCOLA.html",
     "bls_cpi_series_ids": "https://www.bls.gov/cpi/factsheets/cpi-series-ids.htm",
     "bls_motor_fuel_methodology": "https://www.bls.gov/cpi/factsheets/motor-fuel.htm",
+    "bls_ppi_databases": "https://www.bls.gov/ppi/databases/",
+    "truck_transportation_ppi_mirror": "https://fred.stlouisfed.org/series/PCU484484",
     "bls_release_schedule": "https://www.bls.gov/schedule/2026/"
   },
   "series": {
     "cpi_w_all_items": "CWUR0000SA0",
+    "cpi_w_core": "CWUR0000SA0L1E",
     "cpi_w_motor_fuel": "CWUR0000SETB",
     "cpi_w_gasoline": "CWUR0000SETB01",
     "cpi_w_other_motor_fuels": "CWUR0000SETB02",
     "avg_gasoline_regular": "APU000074714",
     "avg_gasoline_all_types": "APU00007471A",
-    "avg_diesel": "APU000074717"
+    "avg_diesel": "APU000074717",
+    "ppi_truck_transportation": "PCU484---484---"
   },
   "weight_source": "BLS CPI-W relative importance, December 2025; gasoline 3.971%, other motor fuels 0.107%."
 }

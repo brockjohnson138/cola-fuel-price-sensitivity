@@ -1,26 +1,32 @@
 {
-  "source": "BLS Public Data API v2",
+  "source": "BLS Public Data API v2; truck PPI snapshot may use the FRED BLS mirror when the API quota is unavailable",
   "series": {
     "cpi_w_all_items": "CWUR0000SA0",
+    "cpi_w_core": "CWUR0000SA0L1E",
     "cpi_w_motor_fuel": "CWUR0000SETB",
     "cpi_w_gasoline": "CWUR0000SETB01",
     "cpi_w_other_motor_fuels": "CWUR0000SETB02",
     "avg_gasoline_regular": "APU000074714",
     "avg_gasoline_all_types": "APU00007471A",
-    "avg_diesel": "APU000074717"
+    "avg_diesel": "APU000074717",
+    "ppi_truck_transportation": "PCU484---484---"
   },
-  "monthly_rows": 807,
+  "monthly_rows": 1038,
   "last_observation_by_series": {
     "cpi_w_all_items": "2026-08-01",
+    "cpi_w_core": "2026-08-01",
     "cpi_w_motor_fuel": "2026-08-01",
     "cpi_w_gasoline": "2026-08-01",
     "cpi_w_other_motor_fuels": "2026-08-01",
     "avg_gasoline_regular": "2026-08-01",
     "avg_gasoline_all_types": "2026-08-01",
-    "avg_diesel": "2026-08-01"
+    "avg_diesel": "2026-08-01",
+    "ppi_truck_transportation": "2026-08-01"
   },
   "notes": [
     "CPI-W all items and fuel component indexes are not seasonally adjusted.",
+    "CPI-W core is all items less food and energy and is used only as a broad downstream price proxy.",
+    "Truck transportation PPI is a freight-price proxy, not a direct measure of diesel costs.",
     "Other motor fuels includes automotive diesel and alternative motor fuels.",
     "September 2026 was unavailable at the time of the snapshot and is forecast/scenario-driven."
   ]

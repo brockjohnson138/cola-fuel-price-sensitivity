@@ -1,4 +1,4 @@
-"""COLA arithmetic and fuel-price counterfactuals."""
+"""COLA arithmetic and direct/indirect fuel-price counterfactuals."""
 
 from __future__ import annotations
 
@@ -6,6 +6,11 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+from .pass_through import (
+    extended_counterfactual,
+    fit_pass_through,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 PROCESSED = ROOT / "data" / "processed"
@@ -74,7 +79,44 @@ def fuel_counterfactual(
     }
 
 
-def analyze(frame: pd.DataFrame) -> tuple[dict, pd.DataFrame, pd.DataFrame]:
+def _solve_diesel_threshold(
+    q3_base: float,
+    july: float,
+    august: float,
+    baseline_september: float,
+    required_september: float,
+    model,
+) -> float:
+    """Find the smallest nonnegative diesel shock reaching a COLA threshold."""
+    if required_september <= baseline_september:
+        return 0.0
+
+    def projected_level(shock: float) -> float:
+        return extended_counterfactual(
+            baseline_september,
+            july,
+            august,
+            gasoline_shock=0.0,
+            diesel_shock=shock,
+            model=model,
+            base_q3=q3_base,
+        )["september_cpi_w_all_items"]
+
+    lower, upper = 0.0, 0.01
+    while projected_level(upper) < required_september and upper < 64.0:
+        upper *= 2.0
+    if projected_level(upper) < required_september:
+        return float("nan")
+    for _ in range(60):
+        midpoint = (lower + upper) / 2.0
+        if projected_level(midpoint) >= required_september:
+            upper = midpoint
+        else:
+            lower = midpoint
+    return upper
+
+
+def analyze(frame: pd.DataFrame) -> tuple[dict, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     pivot = frame.pivot(index="date", columns="series_name", values="value").reset_index()
     q3 = pivot[pivot["date"].dt.month.isin([7, 8, 9])].copy()
     q3["year"] = q3["date"].dt.year
@@ -86,6 +128,16 @@ def analyze(frame: pd.DataFrame) -> tuple[dict, pd.DataFrame, pd.DataFrame]:
     august = float(current.loc[8, "cpi_w_all_items"])
     baseline_sep = september_baseline(frame, "cpi_w_all_items")
     baseline = fuel_counterfactual(q3_2025, july, august, baseline_sep)
+    pass_through = fit_pass_through(frame)
+    extended_baseline = extended_counterfactual(
+        baseline_sep,
+        july,
+        august,
+        gasoline_shock=0.0,
+        diesel_shock=0.0,
+        model=pass_through,
+        base_q3=q3_2025,
+    )
 
     # Determine how much a one-tenth increase over the baseline projected COLA would require.
     target = baseline["cola_rounded_pct"] + 0.1
@@ -114,11 +166,76 @@ def analyze(frame: pd.DataFrame) -> tuple[dict, pd.DataFrame, pd.DataFrame]:
         )
     threshold_df = pd.DataFrame(thresholds)
 
+    extended_thresholds = []
+    for target_cola in np.arange(0.0, 8.1, 0.1):
+        target_value = float(target_cola)
+        needed = required_september_index(q3_2025, target_value, july, august)
+        diesel = _solve_diesel_threshold(
+            q3_2025,
+            july,
+            august,
+            baseline_sep,
+            needed,
+            pass_through,
+        )
+        scenario = extended_counterfactual(
+            baseline_sep,
+            july,
+            august,
+            gasoline_shock=0.0,
+            diesel_shock=0.0 if np.isnan(diesel) else diesel,
+            model=pass_through,
+            base_q3=q3_2025,
+        )
+        extended_thresholds.append(
+            {
+                "target_cola_pct": round(target_value, 1),
+                "required_september_cpi_w": needed,
+                "diesel_only_shock_pct": diesel * 100.0 if not np.isnan(diesel) else np.nan,
+                "diesel_price_if_only_diesel": diesel_price * (1.0 + diesel) if not np.isnan(diesel) else np.nan,
+                "direct_index_increment_at_threshold": scenario["direct_index_increment"],
+                "indirect_index_increment_at_threshold": scenario["indirect_index_increment"],
+            }
+        )
+    extended_threshold_df = pd.DataFrame(extended_thresholds)
+
     grid = []
     for gas in np.arange(0.0, 3.01, 0.05):
         for diesel in np.arange(0.0, 3.01, 0.05):
             grid.append(fuel_counterfactual(q3_2025, july, august, baseline_sep, gas, diesel))
     grid_df = pd.DataFrame(grid)
+    extended_grid = []
+    for gas in np.arange(0.0, 3.01, 0.05):
+        for diesel in np.arange(0.0, 3.01, 0.05):
+            extended_grid.append(
+                extended_counterfactual(
+                    baseline_sep,
+                    july,
+                    august,
+                    gasoline_shock=float(gas),
+                    diesel_shock=float(diesel),
+                    model=pass_through,
+                    base_q3=q3_2025,
+                )
+            )
+    extended_grid_df = pd.DataFrame(extended_grid)
+    extended_target_diesel = _solve_diesel_threshold(
+        q3_2025,
+        july,
+        august,
+        baseline_sep,
+        needed_sep,
+        pass_through,
+    )
+    extended_target_scenario = extended_counterfactual(
+        baseline_sep,
+        july,
+        august,
+        gasoline_shock=0.0,
+        diesel_shock=extended_target_diesel,
+        model=pass_through,
+        base_q3=q3_2025,
+    )
     summary = {
         "as_of": "2026-09-24",
         "status": "September 2026 CPI-W was not yet available; projected and counterfactual results are scenario analysis.",
@@ -127,6 +244,12 @@ def analyze(frame: pd.DataFrame) -> tuple[dict, pd.DataFrame, pd.DataFrame]:
         "august_2026_cpi_w": august,
         "baseline_september_cpi_w_forecast": baseline_sep,
         "baseline_projection": baseline,
+        "raw_rounding_diagnostic": {
+            "raw_cola_pct": baseline["cola_raw_pct"],
+            "rounded_cola_pct": baseline["cola_rounded_pct"],
+            "next_tenth_raw_threshold_pct": target - 0.05,
+            "warning": "Round the unrounded COLA once to the nearest tenth; do not round to two decimals first.",
+        },
         "next_tenth_target_cola_pct": target,
         "required_september_cpi_w_for_next_tenth": needed_sep,
         "additional_september_index_gap": gap,
@@ -135,10 +258,18 @@ def analyze(frame: pd.DataFrame) -> tuple[dict, pd.DataFrame, pd.DataFrame]:
         "other_motor_fuel_only_shock_pct": diesel_shock * 100.0,
         "approx_diesel_price_per_gallon": diesel_price * (1.0 + diesel_shock),
         "weights": WEIGHTS,
+        "pass_through_model": pass_through.summary,
+        "extended_baseline_projection": extended_baseline,
+        "extended_next_tenth_projection": {
+            "diesel_only_shock_pct": extended_target_diesel * 100.0,
+            "diesel_price_if_only_diesel": diesel_price * (1.0 + extended_target_diesel),
+            **extended_target_scenario,
+        },
         "interpretation": [
             "Fuel shocks are ceteris-paribus counterfactuals using BLS CPI-W relative-importance weights.",
-            "The calculation does not claim that fuel prices alone determine the COLA or that the shock is causal.",
+            "The extended channel estimates diesel-to-trucking-to-nonfuel pass-through from historical monthly relationships; it is not a structural causal estimate.",
+            "The calculation does not claim that fuel prices alone determine the COLA.",
             "The September CPI-W release will replace the forecast and make the official COLA arithmetic exact.",
         ],
     }
-    return summary, threshold_df, grid_df
+    return summary, threshold_df, grid_df, extended_threshold_df, extended_grid_df
